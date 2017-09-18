@@ -18,7 +18,7 @@ var Client = module.exports = function (opts) {
 
   this.pubKeyUrl = (opts.pubKeyUrl || this.getEndpoint('public-key'))
   this.cache = createCache(this.pubKeyUrl, opts.cacheDuration)
-
+  if (shouldLogin(opts)) this.loginOpts = { email: this.email, password: this.password }
   return this
 }
 
@@ -30,14 +30,10 @@ Client.prototype.get = function (url, opts, cb) {
     opts = {}
   }
   var self = this
-  verifyToken(this, function (err) {
+  return verifyToken(this, function (err) {
     if (err) {
-      var loginOpts = {
-        email: self.email,
-        password: self.password
-      }
-      if (shouldLogin(loginOpts)) {
-        return self.login(loginOpts, function (err) {
+      if (self.loginOpts) {
+        return self.login(self.loginOpts, function (err) {
           if (err) return cb(err)
           return get(url, addAuthHeader(self.authToken, opts), cb)
         })
@@ -58,12 +54,8 @@ Client.prototype.post = function (url, data, opts, cb) {
   var self = this
   verifyToken(this, function (err) {
     if (err) {
-      var loginOpts = {
-        email: self.email,
-        password: self.password
-      }
-      if (shouldLogin(loginOpts)) {
-        return self.login(loginOpts, function (err) {
+      if (self.loginOpts) {
+        return self.login(self.loginOpts, function (err) {
           if (err) return cb(err)
           return post(url, data, addAuthHeader(self.authToken, opts), cb)
         })
@@ -84,12 +76,8 @@ Client.prototype.put = function (url, data, opts, cb) {
   var self = this
   verifyToken(this, function (err) {
     if (err) {
-      var loginOpts = {
-        email: self.email,
-        password: self.password
-      }
-      if (shouldLogin(loginOpts)) {
-        return self.login(loginOpts, function (err) {
+      if (self.loginOpts) {
+        return self.login(self.loginOpts, function (err) {
           if (err) return cb(err)
           return put(url, data, addAuthHeader(self.authToken, opts), cb)
         })
@@ -110,12 +98,8 @@ Client.prototype.delete = function (url, opts, cb) {
   var self = this
   verifyToken(this, function (err) {
     if (err) {
-      var loginOpts = {
-        email: self.email,
-        password: self.password
-      }
-      if (shouldLogin(loginOpts)) {
-        return self.login(loginOpts, function (err) {
+      if (self.loginOpts) {
+        return self.login(self.loginOpts, function (err) {
           if (err) return cb(err)
           return del(url, addAuthHeader(self.authToken, opts), cb)
         })
@@ -253,7 +237,7 @@ function verifyToken (client, cb) {
 }
 
 function shouldLogin (loginOpts) {
-  return loginOpts.email && loginOpts.password
+  return !loginOpts.authToken && loginOpts.email && loginOpts.password
 }
 
 function createCache (pubKeyUrl, cacheDuration) {
